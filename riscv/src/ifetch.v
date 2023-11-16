@@ -48,7 +48,7 @@ module predictor(
         end
 
         else if (rdy == 1'b0) begin
-
+            
         end
     end
 

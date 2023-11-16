@@ -46,3 +46,6 @@
 `define ICACHE_SIZE 128
 
 `define DATA_RANGE 31:0
+`define OPT_RANGE 6:0
+
+`define PC_RANGE 31:0
