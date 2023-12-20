@@ -1,7 +1,7 @@
 `include "utils.v"
 
 module decoder(
-    input wire [`DATA_RANGE] inst_id,
+    input  wire [`DATA_RANGE] inst_id,
 
     output reg [`OPT_RANGE] opt,
     output reg [`DATA_RANGE] rd,

@@ -1,12 +1,12 @@
 `include "utils.v"
 
 module ALU(
-    input wire [`OPT_RANGE] opt,
-    input wire [`DATA_RANGE] rs1,
-    input wire [`DATA_RANGE] rs2,
-    input wire [`DATA_RANGE] imm,
-    input wire [`DATA_RANGE] pc,
-    input wire [`DATA_RANGE] target_rob_index,
+    input  wire [`OPT_RANGE] opt,
+    input  wire [`DATA_RANGE] rs1,
+    input  wire [`DATA_RANGE] rs2,
+    input  wire [`DATA_RANGE] imm,
+    input  wire [`DATA_RANGE] pc,
+    input  wire [`DATA_RANGE] target_rob_index,
 
     output reg result_valid,
     output reg [`DATA_RANGE] res,
