@@ -9,7 +9,7 @@
 `define WRITE 0
 `define READ 1
 
-module MemCtrl (
+module mem_ctrl (
     input  wire clk,
     input  wire rst,
     input  wire rdy,

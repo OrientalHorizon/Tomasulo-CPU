@@ -43,8 +43,17 @@
 `define OR 6'd36
 `define AND 6'd37
 
+`define DATA_SIZE 32
 `define DATA_RANGE 31:0
 `define ADDR_RANGE 31:0
+
+`define REAL_ADDR_SIZE 17
+`define REAL_ADDR_RANGE 16:0
+
 `define OPT_RANGE 6:0
 
-`define PC_RANGE 31:0
+`define ROB_SIZE 32
+`define ROB_RANGE 4:0
+
+`define REGISTER_NUM 32
+`define REG_RANGE 4:0

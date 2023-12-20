@@ -5,7 +5,7 @@
 `define ICACHE_ENTRIES 256
 
 `define INDEX_RANGE 9:2
-`define TAG_RANGE 17:10
+`define TAG_RANGE 16:10
 
 module ICache(
     input  wire clk,
@@ -14,8 +14,8 @@ module ICache(
 
     input  wire valid_from_ifetch,
     input  wire [`DATA_RANGE] pc_from_ifetch,
-    output wire  valid_to_ifetch,
-    output wire  [`DATA_RANGE] data_to_ifetch,
+    output wire valid_to_ifetch,
+    output wire [`DATA_RANGE] data_to_ifetch,
 
     input  wire valid_from_memctrl,
     input  wire [`DATA_RANGE] data_from_memctrl,
@@ -26,13 +26,13 @@ module ICache(
     reg status;
     // reg [15:0] counter;
 
-    reg [17:0] storage [255:0];
+    reg [`REAL_ADDR_RANGE] storage [255:0];
     reg valid [255:0];
-    reg [17:10] tag [255:0];
+    reg [`TAG_RANGE] tag [255:0];
 
     wire hit = valid[pc_from_ifetch[`INDEX_RANGE]] && tag[pc_from_ifetch[`INDEX_RANGE]] == pc_from_ifetch[`TAG_RANGE];
     assign valid_to_ifetch = hit || valid_from_memctrl && addr_to_memctrl == pc_from_ifetch;
-    assign data_to_ifetch = hit ? storage[pc_from_ifetch[`INDEX_RANGE]] : data_from_memctrl;
+    assign data_to_ifetch = hit ? {15'b0, storage[pc_from_ifetch[`INDEX_RANGE]]} : data_from_memctrl; // TODO MARK
 
     integer i;
     always @(posedge clk) begin
