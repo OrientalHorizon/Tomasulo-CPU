@@ -60,3 +60,6 @@
 
 `define LSB_SIZE 16
 `define LSB_RANGE 4:0
+
+`define RS_SIZE 16
+`define RS_RANGE 4:0
