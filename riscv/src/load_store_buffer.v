@@ -33,7 +33,6 @@ module LSB(
     input  wire valid_from_memctrl,
     input  wire [`DATA_RANGE] data_from_memctrl,
     output reg  valid_to_memctrl,
-    
     output reg  [6:0] inst_type_to_memctrl,
     output reg  [`ADDR_RANGE] addr_to_memctrl,
     output reg  [`DATA_RANGE] data_to_memctrl,
@@ -46,6 +45,153 @@ module LSB(
     output reg [`ROB_RANGE] alias_to_rob,
     output reg [`DATA_RANGE] result_to_rob
 );
+    // 要实现一个循环队列
     reg write_or_read; // write = 0, read = 1
+
+    reg [1:0] state;
+
+    reg [`ROB_RANGE] id [`LSB_SIZE - 1 : 0];
+    reg [`ROB_RANGE] Qi [`LSB_SIZE - 1 : 0];
+    reg [`ROB_RANGE] Qj [`LSB_SIZE - 1 : 0];
+    reg [`DATA_RANGE] Vi [`LSB_SIZE - 1 : 0];
+    reg [`DATA_RANGE] Vj [`LSB_SIZE - 1 : 0];
+    reg [`DATA_RANGE] imm [`LSB_SIZE - 1 : 0];
+    reg [6:0] inst_type [`LSB_SIZE - 1 : 0];
+
+    reg [`LSB_RANGE] head, tail;
+    wire [`LSB_RANGE] next_head = (head == `LSB_SIZE - 1) ? 0 : head + 1;
+    wire [`LSB_RANGE] next_tail = (tail == `LSB_SIZE - 1) ? 0 : tail + 1;
+    wire is_empty = (head == tail);
+    assign lsb_full = (next_tail == head);
+    // 硬接线即可
+
+    // forwarding line，如果当前周期就有结果，可能可以直接解决依赖
+    wire new_Qi = (valid_to_rob && (alias_to_rob == Qi_from_disp)) ? 0 : 
+    (valid_from_alu && (alias_from_alu == Qi_from_disp)) ? 0 : Qi_from_disp;
+
+    wire new_Qj = (valid_to_rob && (alias_to_rob == Qj_from_disp)) ? 0 :
+    (valid_from_alu && (alias_from_alu == Qj_from_disp)) ? 0 : Qj_from_disp;
+
+    wire new_Vi = (valid_to_rob && (alias_to_rob == Qi_from_disp)) ? result_to_rob :
+    (valid_from_alu && (alias_from_alu == Qi_from_disp)) ? result_from_alu : Vi_from_disp;
+
+    wire new_Vj = (valid_to_rob && (alias_to_rob == Qj_from_disp)) ? result_to_rob :
+    (valid_from_alu && (alias_from_alu == Qj_from_disp)) ? result_from_alu : Vj_from_disp;
+
+    wire commit = commit_command_from_rob && (alias_to_store == id[head]);
+    
+    integer i;
+    always @(posedge clk) begin
+        if (rst || rollback_from_rob) begin
+            state <= `IDLE;
+            valid_to_memctrl <= 1'b0;
+            valid_to_rob <= 1'b0;
+            head <= 0; tail <= 0;
+            data_to_memctrl <= 0;
+            write_or_read <= `READ;
+
+            for (i = 0; i < `LSB_SIZE; i = i + 1) begin
+                Vi[i] <= 0;
+                Vj[i] <= 0;
+                imm[i] <= 0;
+                Qi[i] <= 0;
+                Qj[i] <= 0;
+                id[i] <= 0;
+            end
+        end
+        else if (~rdy) begin end
+        else begin
+            if (valid_from_disp) begin
+                tail <= next_tail;
+                id[tail] <= rd_from_disp;
+                inst_type[tail] <= inst_type_from_disp;
+                Qi[tail] <= new_Qi;
+                Qj[tail] <= new_Qj;
+                Vi[tail] <= new_Vi;
+                Vj[tail] <= new_Vj;
+                imm[tail] <= imm_from_disp;
+            end
+            if (valid_from_alu) begin
+                // 挨个扫 buffer 里面的东西，看看能不能消依赖
+                for (i = 0; i < `LSB_SIZE; i = i + 1) begin
+                    if (Qi[i] == alias_from_alu) begin
+                        Qi[i] <= 0;
+                        Vi[i] <= result_from_alu;
+                    end
+                    if (Qj[i] == alias_from_alu) begin
+                        Qj[i] <= 0;
+                        Vj[i] <= result_from_alu;
+                    end
+                end
+            end
+            if (valid_to_rob) begin
+                for (i = 0; i < `LSB_SIZE; i = i + 1) begin
+                    if (Qi[i] == alias_to_rob) begin
+                        Qi[i] <= 0;
+                        Vi[i] <= result_to_rob;
+                    end
+                    if (Qj[i] == alias_to_rob) begin
+                        Qj[i] <= 0;
+                        Vj[i] <= result_to_rob;
+                    end
+                end
+            end
+
+            case (state)
+                `IDLE: begin
+                    // 如果队列非空，往 Memory controller 里面上东西
+                    if (head != tail && commit && ~Qi[head] && ~Qj[head]) begin
+                        // 可以 commit
+                        alias_to_rob <= id[head];
+                        inst_type_to_memctrl <= inst_type[head];
+                        addr_to_memctrl <= Vi[head] + imm[head];
+
+                        case (inst_type[head])
+                            `LB, `LBU, `LH, `LHU, `LW: begin
+                                state <= `LOAD;
+                                write_or_read <= `READ;
+                            end
+                            `SB, `SH, `SW: begin
+                                state <= `STORE;
+                                write_or_read <= `WRITE;
+                                data_to_memctrl <= Vj[head];
+                            end
+                        endcase
+
+                        valid_to_memctrl <= 1'b1;
+                        head <= next_head;
+                    end
+                    else begin
+                        valid_to_memctrl <= 1'b0;
+                    end
+                end
+                `LOAD: begin
+                    if (valid_from_memctrl) begin
+                        valid_to_rob <= 1'b1;
+                        result_to_rob <= data_from_memctrl;
+                        valid_to_memctrl <= 1'b0;
+
+                        state <= `IDLE;
+                    end
+                    else begin
+                        valid_to_rob <= 1'b0;
+                    end
+                end
+                `STORE: begin
+                    if (valid_from_memctrl) begin
+                        valid_to_rob <= 1'b1;
+                        result_to_rob <= 0;
+                        valid_to_memctrl <= 1'b0;
+                        write_or_read <= `READ;
+                        
+                        state <= `IDLE;
+                    end
+                    else begin
+                        valid_to_rob <= 1'b0;
+                    end
+                end
+            endcase
+        end
+    end
 
 endmodule

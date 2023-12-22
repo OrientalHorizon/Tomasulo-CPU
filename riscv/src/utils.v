@@ -57,3 +57,6 @@
 
 `define REGISTER_NUM 32
 `define REG_RANGE 4:0
+
+`define LSB_SIZE 16
+`define LSB_RANGE 4:0

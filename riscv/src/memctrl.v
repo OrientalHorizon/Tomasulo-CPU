@@ -49,11 +49,11 @@ module mem_ctrl (
         else if (!rdy) begin end
         else if (uart_full) begin end
         else begin
-            if (inst_type_from_lsb == `LW || inst_type_from_lsb == `LH || inst_type_from_lsb == `LB) begin
-                write_or_read <= `READ;
+            if (inst_type_from_lsb == `SW || inst_type_from_lsb == `SH || inst_type_from_lsb == `SB) begin
+                write_or_read <= `WRITE;
             end
             else begin
-                write_or_read <= `WRITE;
+                write_or_read <= `READ;
             end
 
             if (status == `IDLE) begin
@@ -82,10 +82,10 @@ module mem_ctrl (
                     if (inst_type_from_lsb == `LW) begin
                         tot_bytes <= 3'b11;
                     end
-                    else if (inst_type_from_lsb == `LH) begin
+                    else if (inst_type_from_lsb == `LH || inst_type_from_lsb == `LHU) begin
                         tot_bytes <= 3'b10;
                     end
-                    else if (inst_type_from_lsb == `LB) begin
+                    else if (inst_type_from_lsb == `LB || inst_type_from_lsb == `LBU) begin
                         tot_bytes <= 3'b01;
                     end
                     else begin
