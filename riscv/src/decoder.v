@@ -3,15 +3,19 @@
 module decoder(
     input  wire [`DATA_RANGE] inst_id,
 
-    output reg [`OPT_RANGE] opt,
-    output reg [`DATA_RANGE] rd,
-    output reg [`DATA_RANGE] rs1,
-    output reg [`DATA_RANGE] rs2,
-    output reg [`DATA_RANGE] imm
+    output reg  [`OPT_RANGE] opt,
+    output reg  [`DATA_RANGE] rd,
+    output reg  [`DATA_RANGE] rs1,
+    output reg  [`DATA_RANGE] rs2,
+    output reg  [`DATA_RANGE] imm,
+    output reg  is_load_store,
+    output reg  is_btype
 );
     always @(*) begin
         case (inst_id[`OPT_RANGE])
             7'b0110111: begin // Only LUI
+                is_load_store = 1'b0;
+                is_btype = 1'b0;
                 opt = `LUI;
                 rd = inst_id[11:7];
                 rs1 = 0;
@@ -21,6 +25,8 @@ module decoder(
             end
 
             7'b0010111: begin // Only AUIPC
+                is_load_store = 1'b0;
+                is_btype = 1'b0;
                 opt = `AUIPC;
                 rd = inst_id[11:7];
                 rs1 = 0;
@@ -30,6 +36,8 @@ module decoder(
             end
 
             7'b1101111: begin // Only JAL
+                is_load_store = 1'b0;
+                is_btype = 1'b0;
                 opt = `JAL;
                 rd = inst_id[11:7];
                 rs1 = 0;
@@ -44,6 +52,8 @@ module decoder(
             end
 
             7'b1100111: begin // Only JALR
+                is_load_store = 1'b0;
+                is_btype = 1'b0;
                 opt = `JALR;
                 rd = inst_id[11:7];
                 rs1 = inst_id[19:15];
@@ -54,6 +64,8 @@ module decoder(
             end
 
             7'b1100011: begin // BEQ, BNE, BLT, BGE, BLTU, BGEU
+                is_btype = 1'b1;
+                is_load_store = 1'b0;
                 case (inst_id[14:12])
                     3'b000: opt = `BEQ;
                     3'b001: opt = `BNE;
@@ -75,6 +87,8 @@ module decoder(
             end
 
             7'b0000011: begin // LB, LH, LW, LBU, LHU
+                is_load_store = 1'b1;
+                is_btype = 1'b0;
                 case (inst_id[14:12])
                     3'b000: opt = `LB;
                     3'b001: opt = `LH;
@@ -91,6 +105,8 @@ module decoder(
             end
 
             7'b0100011: begin// SB, SH, SW
+                is_load_store = 1'b1;
+                is_btype = 1'b0;
                 case (inst_id[14:12])
                     3'b000: opt = `SB;
                     3'b001: opt = `SH;
@@ -106,6 +122,8 @@ module decoder(
             end
 
             7'b0010011: begin // ADDI, SLTI, SLTIU, XORI, ORI, ANDI, SLLI, SRLI, SRAI
+                is_load_store = 1'b0;
+                is_btype = 1'b0;
                 case (inst_id[14:12])
                     3'b000: begin
                         opt = `ADDI;
@@ -139,6 +157,8 @@ module decoder(
             end
 
             7'b0110011: begin
+                is_load_store = 1'b0;
+                is_btype = 1'b0;
                 case (inst_id[14:12])
                     3'b000: begin
                         if (inst_id[31:25] == 7'b0000000) begin

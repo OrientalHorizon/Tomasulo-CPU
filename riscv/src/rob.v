@@ -8,7 +8,7 @@ module ROB(
     input  wire rdy,
 
     output wire rob_full,
-    output reg rollback,
+    output reg  rollback,
     output reg  [`DATA_RANGE] rollback_pc,
 
     input  wire valid_from_lsb,
