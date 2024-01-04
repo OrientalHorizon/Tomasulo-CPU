@@ -22,7 +22,7 @@ module LSB(
 
     input  wire valid_from_disp,
     input  wire [`DATA_RANGE] pc_from_disp,
-    input  wire [6:0] inst_type_from_disp,
+    input  wire [`OPT_RANGE] inst_type_from_disp,
     input  wire [`ROB_RANGE] rd_from_disp,
     input  wire [`ROB_RANGE] Qi_from_disp,
     input  wire [`ROB_RANGE] Qj_from_disp,
@@ -33,7 +33,7 @@ module LSB(
     input  wire valid_from_memctrl,
     input  wire [`DATA_RANGE] data_from_memctrl,
     output reg  valid_to_memctrl,
-    output reg  [6:0] inst_type_to_memctrl,
+    output reg  [`OPT_RANGE] inst_type_to_memctrl,
     output reg  [`ADDR_RANGE] addr_to_memctrl,
     output reg  [`DATA_RANGE] data_to_memctrl,
 

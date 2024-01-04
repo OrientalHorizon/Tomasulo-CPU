@@ -1,6 +1,6 @@
 `include "utils.v"
 
-module ReservationStation(
+module reservation_station(
     input  wire clk,
     input  wire rst,
     input  wire rdy,
@@ -11,7 +11,7 @@ module ReservationStation(
 
     input  wire valid_from_disp,
     input  wire [`DATA_RANGE] pc_from_disp,
-    input  wire [6:0] inst_type_from_disp,
+    input  wire [`OPT_RANGE] inst_type_from_disp,
     input  wire [`ROB_RANGE] rd_from_disp,
     input  wire [`ROB_RANGE] Qi_from_disp,
     input  wire [`ROB_RANGE] Qj_from_disp,
@@ -19,18 +19,20 @@ module ReservationStation(
     input  wire [`DATA_RANGE] Vj_from_disp,
     input  wire [`DATA_RANGE] imm_from_disp,
 
+    // CDB
     input  wire valid_from_alu,
     input  wire [`ROB_RANGE] alias_from_alu,
     input  wire [`DATA_RANGE] result_from_alu,
+
     output reg  valid_to_alu,
-    output reg  [6:0] inst_type_to_alu,
+    output reg  [`OPT_RANGE] inst_type_to_alu,
     output reg  [`ROB_RANGE] alias_to_alu,
     output reg  [`DATA_RANGE] Vi_to_alu,
     output reg  [`DATA_RANGE] Vj_to_alu,
     output reg  [`DATA_RANGE] imm_to_alu,
     output reg  [`DATA_RANGE] pc_to_alu,
 
-    // LSB 通过总线给 RS 信息消依赖
+    // LSB 通过总线给 RS 信息消依赖 CDB
     input  wire valid_from_lsb,
     input  wire [`ROB_RANGE] alias_from_lsb,
     input  wire [`DATA_RANGE] result_from_lsb

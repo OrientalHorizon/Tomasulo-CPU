@@ -47,8 +47,8 @@
 `define DATA_RANGE 31:0
 `define ADDR_RANGE 31:0
 
-`define REAL_ADDR_SIZE 17
-`define REAL_ADDR_RANGE 16:0
+`define REAL_ADDR_SIZE 18
+`define REAL_ADDR_RANGE 17:0
 
 `define OPT_RANGE 6:0
 

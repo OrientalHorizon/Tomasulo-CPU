@@ -61,7 +61,7 @@ module predictor(
     assign jump = prediction[cur_pc[`PREDICTOR_RANGE]][1];
 
     always @(posedge clk) begin
-        if (rst && commit_pc_valid) begin
+        if (commit_pc_valid) begin
             if (really_jump) begin
                 if (prediction[commit_pc[`PREDICTOR_RANGE]] != 2'b11) begin
                     prediction[commit_pc[`PREDICTOR_RANGE]] <= prediction[commit_pc[`PREDICTOR_RANGE]] + 1;

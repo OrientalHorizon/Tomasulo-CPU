@@ -5,7 +5,7 @@
 `define ICACHE_ENTRIES 256
 
 `define INDEX_RANGE 9:2
-`define TAG_RANGE 16:10
+`define TAG_RANGE 17:10
 
 module ICache(
     input  wire clk,
@@ -42,8 +42,8 @@ module ICache(
             valid_to_memctrl <= 1'b0;
             for (i = 0; i < 256; i = i + 1) begin
                 valid[i] <= 1'b0;
-                tag[i] <= 8'b0;
-                storage[i] <= 18'b0;
+                tag[i] <= 0;
+                storage[i] <= 0;
             end
         end
 

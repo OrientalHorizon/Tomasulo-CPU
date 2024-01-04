@@ -6,8 +6,8 @@
 `define FETCH_PROCESSING 3
 `define STALL 3 // Maybe waiting for RAM
 
-`define WRITE 0
-`define READ 1
+`define WRITE 1
+`define READ 0
 
 module mem_ctrl (
     input  wire clk,
@@ -23,13 +23,13 @@ module mem_ctrl (
     input  wire valid_from_lsb,
     input  wire [`ADDR_RANGE] addr_from_lsb,
     input  wire [`DATA_RANGE] data_from_lsb,
-    input  wire [6:0] inst_type_from_lsb,
+    input  wire [`OPT_RANGE] inst_type_from_lsb,
     output reg  valid_to_lsb,
     output reg  [`DATA_RANGE] data_to_lsb,
 
     input wire  uart_full,
     input wire  [7:0] data_from_ram,
-    output reg  write_or_read, // write = 0, read = 1
+    output reg  write_or_read, // write = 1, read = 0
     output reg  [`ADDR_RANGE] addr_to_ram,
     output reg  [7:0] data_to_ram
 );  

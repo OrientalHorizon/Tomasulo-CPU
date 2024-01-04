@@ -6,13 +6,13 @@ module ALU(
     input  wire [`DATA_RANGE] rs2,
     input  wire [`DATA_RANGE] imm,
     input  wire [`DATA_RANGE] pc,
-    input  wire [`DATA_RANGE] target_rob_index,
+    input  wire [`ROB_RANGE] target_rob_index,
 
     output reg  result_valid,
     output reg  [`DATA_RANGE] res,
-    output reg  [`DATA_RANGE] target_rob_index_output,
+    output reg  [`ROB_RANGE] target_rob_index_output,
     output reg  [`DATA_RANGE] pc_output,
-    output reg  [`DATA_RANGE] really_jump
+    output reg  really_jump
 );
 
     always @(*) begin

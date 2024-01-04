@@ -11,6 +11,7 @@ module ROB(
     output reg  rollback,
     output reg  [`DATA_RANGE] rollback_pc,
 
+    // CDB
     input  wire valid_from_lsb,
     input  wire [`ROB_RANGE] alias_from_lsb,
     input  wire [`DATA_RANGE] result_from_lsb,
@@ -20,6 +21,7 @@ module ROB(
     output reg  commit_command_to_lsb,
     output reg  [`ROB_RANGE] alias_to_store,
 
+    // CDB
     input  wire valid_from_alu,
     input  wire [`ROB_RANGE] alias_from_alu,
     input  wire [`DATA_RANGE] result_from_alu,
@@ -29,15 +31,15 @@ module ROB(
 
     output reg  valid_to_predictor,
     output reg  really_jump_to_predictor,
-    output reg  [`DATA_RANGE] real_pc_to_predictor,
-    output reg  correctness_to_predictor,
+    output reg  [`DATA_RANGE] branch_pc_to_predictor,
+    // output reg  correctness_to_predictor,
 
     input  wire valid_from_disp,
     input  wire [`DATA_RANGE] pc_from_disp,
     input  wire [`REG_RANGE] rd_from_disp,
     input  wire is_btype_from_disp,
     input  wire predicted_jump_from_disp,
-    input  wire [6:0] inst_type_from_disp,
+    input  wire [`OPT_RANGE] inst_type_from_disp,
 
     input  wire [`ROB_RANGE] Qi_from_disp,
     input  wire [`ROB_RANGE] Qj_from_disp,
@@ -83,7 +85,7 @@ module ROB(
             rollback <= 1'b0;
             valid_to_predictor <= 1'b0;
             really_jump_to_predictor <= 1'b0;
-            real_pc_to_predictor <= 0;
+            branch_pc_to_predictor <= 0;
 
             commit_command_to_lsb <= 1'b0;
 
@@ -135,16 +137,16 @@ module ROB(
                     // 甩给 predictor
                     valid_to_predictor <= 1'b1;
                     really_jump_to_predictor <= really_jump[head];
-                    real_pc_to_predictor <= new_pc[head];
+                    branch_pc_to_predictor <= original_pc[head];
                     if (really_jump[head] != predicted_jump[head]) begin
                         // Rollback
-                        correctness_to_predictor <= 1'b0;
+                        // correctness_to_predictor <= 1'b0;
                         rollback <= 1'b1;
                         rollback_pc <= really_jump[head] ? new_pc[head] : original_pc[head] + 4;
                     end
-                    else begin
-                        correctness_to_predictor <= 1'b1;
-                    end
+                    // else begin
+                    //     correctness_to_predictor <= 1'b1;
+                    // end
                 end
                 else begin
                     valid_to_predictor <= 1'b0;
