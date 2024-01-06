@@ -28,7 +28,7 @@ module register_file(
     reg [`ROB_RANGE] alias[31:0];
 
     // 如果 ROB 的最新 commit 涉及 rs1, rs2，那么它当然就没有依赖了，否则另说
-    // 王世坚：就是这么简单.jpg
+    // 王世坚：就是这么简单.gif
     wire [`ROB_RANGE] rs1_alias = alias[rs1_from_disp];
     wire [`ROB_RANGE] rs2_alias = alias[rs2_from_disp];
 

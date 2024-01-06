@@ -1,3 +1,4 @@
+// 不能是 6'd！！！要不然会出现 invalid bit！！！！
 `define LUI 6'd1
 `define AUIPC 6'd2
 

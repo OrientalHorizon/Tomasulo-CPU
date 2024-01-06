@@ -147,6 +147,7 @@ module LSB(
                         addr_to_memctrl <= Vi[head] + imm[head];
 
                         case (inst_type[head])
+                        // 确定状态机：什么时候开始读，什么时候开始写（这个周期还是下个周期）
                             `LB, `LBU, `LH, `LHU, `LW: begin
                                 state <= `LOAD;
                                 write_or_read <= `READ;

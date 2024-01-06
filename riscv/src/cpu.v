@@ -198,6 +198,7 @@ module cpu(
     wire [`DATA_RANGE] pc_disp_to_rob;
     wire [`REG_RANGE] rd_disp_to_rob;
     wire is_btype_disp_to_rob;
+    wire is_load_store_disp_to_rob;
     wire predicted_jump_disp_to_rob;
     wire [`OPT_RANGE] inst_type_disp_to_rob;
     wire [`ROB_RANGE] Qi_disp_to_rob;
@@ -277,6 +278,7 @@ module cpu(
         .pc_to_rob(pc_disp_to_rob),
         .rd_to_rob(rd_disp_to_rob),
         .is_btype_to_rob(is_btype_disp_to_rob),
+        .is_load_store_to_rob(is_load_store_disp_to_rob),
         .predicted_jump_to_rob(predicted_jump_disp_to_rob),
         .inst_type_to_rob(inst_type_disp_to_rob),
         .Qi_to_rob(Qi_disp_to_rob),
@@ -388,6 +390,7 @@ module cpu(
         .pc_from_disp(pc_disp_to_rob),
         .rd_from_disp(rd_disp_to_rob),
         .is_btype_from_disp(is_btype_disp_to_rob),
+        .is_load_store_from_disp(is_load_store_disp_to_rob),
         .predicted_jump_from_disp(predicted_jump_disp_to_rob),
         .inst_type_from_disp(inst_type_disp_to_rob),
 

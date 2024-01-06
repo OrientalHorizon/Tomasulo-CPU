@@ -28,6 +28,7 @@ module dispatcher(
     output reg  [`DATA_RANGE] pc_to_rob,
     output reg  [`REG_RANGE] rd_to_rob,
     output reg  is_btype_to_rob,
+    output reg  is_load_store_to_rob,
     output reg  predicted_jump_to_rob,
     output reg  [`OPT_RANGE] inst_type_to_rob,
     output reg  [`ROB_RANGE] Qi_to_rob,
@@ -175,6 +176,7 @@ module dispatcher(
                 is_btype_to_rob <= is_btype_from_decoder;
                 predicted_jump_to_rob <= predicted_jump_from_ifetch;
                 inst_type_to_rob <= inst_type_from_decoder;
+                is_load_store_to_rob <= is_load_store_from_decoder;
             end
             else begin
                 valid_to_lsb <= 1'b0;
@@ -186,3 +188,5 @@ module dispatcher(
     end
 
 endmodule
+
+// pc 与当前指令刚好错 1 位

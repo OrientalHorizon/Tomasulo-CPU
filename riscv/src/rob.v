@@ -18,8 +18,8 @@ module ROB(
 
     // 与 LSB 的交互：Load 指令读完 commit（commit 的过程定义为把读出来的值存进寄存器 / renamed 寄存器的过程）
     // Store 指令的 commit 是一个十分长的 store 过程，存完了才算 committed
-    output reg  commit_command_to_lsb,
-    output reg  [`ROB_RANGE] alias_to_store,
+    output wire commit_command_to_lsb,
+    output wire [`ROB_RANGE] alias_to_store,
 
     // CDB
     input  wire valid_from_alu,
@@ -38,6 +38,7 @@ module ROB(
     input  wire [`DATA_RANGE] pc_from_disp,
     input  wire [`REG_RANGE] rd_from_disp,
     input  wire is_btype_from_disp,
+    input  wire is_load_store_from_disp,
     input  wire predicted_jump_from_disp,
     input  wire [`OPT_RANGE] inst_type_from_disp,
 
@@ -54,18 +55,22 @@ module ROB(
     output reg  [`ROB_RANGE] alias_to_reg_file,
     output reg  [`DATA_RANGE] result_to_reg_file
 );
-    reg ready [`ROB_RANGE];
-    reg [`DATA_RANGE] original_pc [`ROB_RANGE];
-    reg [`DATA_RANGE] new_pc [`ROB_RANGE];
-    reg is_btype [`ROB_RANGE];
-    reg predicted_jump [`ROB_RANGE];
-    reg really_jump [`ROB_RANGE];
-    reg [6:0] inst_type[`ROB_RANGE];
-    reg [`DATA_RANGE] result[`ROB_RANGE];
-    reg [`REG_RANGE] rd[`ROB_RANGE];
+    // fuck！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！所有的数组检查一遍，下标范围不要再出问题了！！！！！1
+    reg ready [`ROB_SIZE - 1 : 0];
+    reg [`DATA_RANGE] original_pc [`ROB_SIZE - 1 : 0];
+    reg [`DATA_RANGE] new_pc [`ROB_SIZE - 1 : 0];
+    reg is_btype [`ROB_SIZE - 1 : 0];
+    reg is_load_store [`ROB_SIZE - 1 : 0];
+    reg predicted_jump [`ROB_SIZE - 1 : 0];
+    reg really_jump [`ROB_SIZE - 1 : 0];
+    reg [6:0] inst_type [`ROB_SIZE - 1 : 0];
+    reg [`DATA_RANGE] result [`ROB_SIZE - 1 : 0];
+    reg [`REG_RANGE] rd [`ROB_SIZE - 1 : 0];
     reg [`ROB_RANGE] head, tail;
     wire [`ROB_RANGE] next_head = (head == `ROB_SIZE - 1) ? 1 : head + 1;
     wire [`ROB_RANGE] next_tail = (tail == `ROB_SIZE - 1) ? 1 : tail + 1;
+
+    // 一样的，tail 是假的，指向队尾的后一位，head 是真的
 
     assign rob_full = (head == next_tail);
     wire is_empty = (head == tail);
@@ -76,6 +81,9 @@ module ROB(
     assign Vj_valid_to_disp = ready[Qj_from_disp];
     assign Vj_to_disp = result[Qj_from_disp];
 
+    wire debug_is_ls = is_load_store[head]; // 所以为什么 >= <= 号会出问题？？？？
+    assign commit_command_to_lsb = ((~is_empty) && debug_is_ls);
+    assign alias_to_store = head;
 
     integer i;
     always @(posedge clk) begin
@@ -87,10 +95,9 @@ module ROB(
             really_jump_to_predictor <= 1'b0;
             branch_pc_to_predictor <= 0;
 
-            commit_command_to_lsb <= 1'b0;
-
             valid_to_reg_file <= 1'b0;
             for (i = 0; i < `ROB_SIZE; i = i + 1) begin
+                is_load_store[i] <= 0;
                 ready[i] <= 0;
                 is_btype[i] <= 0;
                 predicted_jump[i] <= 0;
@@ -105,19 +112,22 @@ module ROB(
         else if (~rdy) begin end
         else begin
             if (valid_from_disp && !rob_full) begin
+                $display("tail = %h, tmp_pc = %h", tail, pc_from_disp);
+                $display("inst_type = %d", inst_type_from_disp);
+                $display("is_load_store = %d", is_load_store_from_disp);
                 tail <= next_tail;
                 ready[tail] <= 1'b0;
-                is_btype[next_head] <= is_btype_from_disp;
-                predicted_jump[next_head] <= predicted_jump_from_disp;
-                // really_jump[next_head] <= 0;
-                original_pc[next_head] <= pc_from_disp;
-                // new_pc[next_head] <= pc_from_disp;
-                inst_type[next_head] <= inst_type_from_disp;
-                result[next_head] <= 0;
-                rd[next_head] <= rd_from_disp;
+                is_btype[tail] <= is_btype_from_disp;
+                predicted_jump[tail] <= predicted_jump_from_disp;
+                original_pc[tail] <= pc_from_disp;
+                inst_type[tail] <= inst_type_from_disp;
+                is_load_store[tail] <= is_load_store_from_disp;
+                result[tail] <= 0;
+                rd[tail] <= rd_from_disp; // 写成 next_head，怎么想的？
             end
 
             if (valid_from_alu) begin
+                $display("%h", alias_from_alu);
                 ready[alias_from_alu] <= 1'b1;
                 result[alias_from_alu] <= result_from_alu;
                 really_jump[alias_from_alu] <= really_jump_from_alu;
@@ -131,10 +141,12 @@ module ROB(
             end
 
             if (~is_empty && ready[head]) begin
+                $display("caonima");
                 head <= next_head;
                 ready[head] <= 1'b0;
                 if (is_btype[head]) begin
                     // 甩给 predictor
+                    $display("aminoac");
                     valid_to_predictor <= 1'b1;
                     really_jump_to_predictor <= really_jump[head];
                     branch_pc_to_predictor <= original_pc[head];

@@ -1,6 +1,7 @@
 `include "utils.v"
 
-`define PREDICTOR_WIDTH 6
+// 注意 PREDICTOR_WIDTH 是数组大小，是 2 的幂次！！
+`define PREDICTOR_WIDTH 64
 `define PREDICTOR_RANGE 7:2
 
 `define WORKING 2'b00
@@ -49,31 +50,28 @@ module predictor(
     always @(posedge clk) begin
         if (rst) begin
             for (i = 0; i < `PREDICTOR_WIDTH; i = i + 1) begin
-                prediction[i] <= 2'b0;
+                prediction[i] <= 0;
             end
         end
-
-        else if (~rdy) begin
-            
+        else if (~rdy) begin end
+        else begin
+            if (commit_pc_valid) begin
+                // $display("eowfiugyfsiado");
+                if (really_jump) begin
+                    if (prediction[commit_pc[`PREDICTOR_RANGE]] != 2'b11) begin
+                        prediction[commit_pc[`PREDICTOR_RANGE]] <= prediction[commit_pc[`PREDICTOR_RANGE]] + 1;
+                    end
+                end
+                else begin
+                    if (prediction[commit_pc[`PREDICTOR_RANGE]] != 2'b00) begin
+                        prediction[commit_pc[`PREDICTOR_RANGE]] <= prediction[commit_pc[`PREDICTOR_RANGE]] - 1;
+                    end
+                end
+            end
         end
     end
 
     assign jump = prediction[cur_pc[`PREDICTOR_RANGE]][1];
-
-    always @(posedge clk) begin
-        if (commit_pc_valid) begin
-            if (really_jump) begin
-                if (prediction[commit_pc[`PREDICTOR_RANGE]] != 2'b11) begin
-                    prediction[commit_pc[`PREDICTOR_RANGE]] <= prediction[commit_pc[`PREDICTOR_RANGE]] + 1;
-                end
-            end
-            else begin
-                if (prediction[commit_pc[`PREDICTOR_RANGE]] != 2'b00) begin
-                    prediction[commit_pc[`PREDICTOR_RANGE]] <= prediction[commit_pc[`PREDICTOR_RANGE]] - 1;
-                end
-            end
-        end
-    end
 
 endmodule
 
@@ -120,22 +118,31 @@ module IFetch(
         end
         else if (~rdy) begin end
         else if (rollback_from_rob) begin
+            // TODO: rollback 的情况还要再考虑，什么时候能直接改 valid_to_icache
             status <= `ROLLBACK;
             valid_to_dispatcher <= 0;
         end
         else begin
+            
             // 跑状态机
+            if (status == `ROLLBACK) begin
+
+            end
             if (status == `WORKING && ~blocked) begin
                 if (valid_from_icache) begin
+                    // $display("WORKING & valid: pc = %h", local_pc);
                     status <= `FETCHING;
                     local_pc <= next_pc_from_manager;
                     valid_to_dispatcher <= 1;
                     inst_to_dispatcher <= inst_from_icache;
-                    pc_to_dispatcher <= next_pc_from_manager;
+                    pc_to_dispatcher <= local_pc; // 不能是 next_pc！！！
                     is_jump_to_dispatcher <= is_jump_from_manager;
 
                     valid_to_icache <= 0;
                 end
+                // else begin
+                //     $display("WORKING & not valid: pc = %d", local_pc);
+                // end
             end
 
             if (status == `FETCHING) begin
@@ -144,6 +151,7 @@ module IFetch(
 
                     valid_to_icache <= 1;
                     pc_to_icache <= local_pc;
+                    // $display("FETCHING: pc = %h", local_pc);
                     status <= `WORKING;
                 end
                 else begin
@@ -170,14 +178,14 @@ module pc_manager(
     output wire [`DATA_RANGE] pc_to_pred
 );
     // 硬接线
-    wire is_btype = inst_from_if[`OPT_RANGE] == `B_TYPE;
-    wire is_jal = inst_from_if[`OPT_RANGE] == `JAL;
+    wire is_btype = (inst_from_if[`OPT_RANGE] == `B_TYPE) ? 1'b1 : 1'b0;
+    wire is_jal = (inst_from_if[`OPT_RANGE] == `JAL) ? 1'b1 : 1'b0; // 赋初值！！！！
     wire need_manager = is_btype || is_jal;
     wire [`DATA_RANGE] imm_jal;
     wire [`DATA_RANGE] imm_branch;
 
     assign imm_jal = {{12{inst_from_if[31]}}, inst_from_if[19:12], inst_from_if[20], inst_from_if[30:21], 1'b0};
-    assign imm_branch = {{20{inst_from_if[31]}}, inst_from_if[7], inst_from_if[30:25], inst_from_if[11:8], 1'b0};
+    assign imm_branch = {{20{inst_from_if[31]}}, inst_from_if[7], inst_from_if[30:25], inst_from_if[11:8], 1'b0};// 21 27 31 32
     wire [`DATA_RANGE] pc_offset = is_btype ? imm_branch : imm_jal;
 
     assign pc_to_pred = is_btype ? pc_from_if : 0;
@@ -189,6 +197,10 @@ module pc_manager(
         if (rst) begin
         end
         else if (~rdy) begin end
+        // if (is_btype) begin
+        //     $display("is_jump_by_manager = %h", is_jump_to_if);
+        //     $display("imm_branch = %h", imm_branch);
+        // end
     end
 
 endmodule

@@ -55,16 +55,21 @@ module ICache(
                     status <= `STALL;
                     valid_to_memctrl <= 1'b1;
                     addr_to_memctrl <= pc_from_ifetch;
+                    // $display("valid to memctrl");
                 end
             end
             else begin // `STALL
                 if (valid_from_memctrl) begin
+                    // $display("fuck memctrl");
                     valid_to_memctrl <= 1'b0;
                     status <= `AVAILABLE;
                     valid[addr_to_memctrl[`INDEX_RANGE]] <= 1'b1;
                     tag[addr_to_memctrl[`INDEX_RANGE]] <= addr_to_memctrl[`TAG_RANGE];
                     storage[addr_to_memctrl[`INDEX_RANGE]] <= data_from_memctrl[17:0];
                 end
+                // else begin
+                //     $display("6");
+                // end
             end
         end
     end
