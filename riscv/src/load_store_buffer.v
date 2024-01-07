@@ -41,6 +41,7 @@ module LSB(
     input  wire [`ROB_RANGE] alias_from_alu,
     input  wire [`DATA_RANGE] result_from_alu,
 
+    // CDB!!!
     output reg  valid_to_rob,
     output reg [`ROB_RANGE] alias_to_rob,
     output reg [`DATA_RANGE] result_to_rob
@@ -56,7 +57,7 @@ module LSB(
     reg [`DATA_RANGE] Vi [`LSB_SIZE - 1 : 0];
     reg [`DATA_RANGE] Vj [`LSB_SIZE - 1 : 0];
     reg [`DATA_RANGE] imm [`LSB_SIZE - 1 : 0];
-    reg [6:0] inst_type [`LSB_SIZE - 1 : 0];
+    reg [`OPT_RANGE] inst_type [`LSB_SIZE - 1 : 0];
 
     reg [`LSB_RANGE] head, tail;
     wire [`LSB_RANGE] next_head = (head == `LSB_SIZE - 1) ? 0 : head + 1;
@@ -89,6 +90,8 @@ module LSB(
             head <= 0; tail <= 0;
             data_to_memctrl <= 0;
             write_or_read <= `READ;
+            alias_to_rob <= 0;
+            result_to_rob <= 0;
 
             for (i = 0; i < `LSB_SIZE; i = i + 1) begin
                 Vi[i] <= 0;
@@ -139,7 +142,10 @@ module LSB(
 
             case (state)
                 `IDLE: begin
-                    // 如果队列非空，往 Memory controller 里面上东西
+                    // 一次提交 valid_from_lsb 只能有一个周期为真，必须把 valid_from_lsb 设为 0
+                    // 如果队列非空且可以提交，往 Memory controller 里面上东西
+                    valid_to_rob <= 1'b0;
+                    alias_to_rob <= 0;
                     if (head != tail && commit && ~Qi[head] && ~Qj[head]) begin
                         // 可以 commit
                         alias_to_rob <= id[head];

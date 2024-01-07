@@ -106,6 +106,8 @@ module IFetch(
     assign inst_to_manager = inst_from_icache;
     assign pc_to_manager = local_pc;
 
+    // TODO: JALR 指令的处理，以及 rollback 的时候刚好在读入怎么办
+
     always @(posedge clk) begin
         if (rst) begin
             local_pc <= 0;
