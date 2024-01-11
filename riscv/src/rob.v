@@ -56,6 +56,12 @@ module ROB(
     output reg  [`DATA_RANGE] result_to_reg_file
 );
     // fuck！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！所有的数组检查一遍，下标范围不要再出问题了！！！！！1
+    `ifdef DEBUG
+    integer outfile;
+    initial begin
+        outfile = $fopen("test1.out");
+    end
+    `endif
     reg ready [`ROB_SIZE - 1 : 0];
     reg [`DATA_RANGE] original_pc [`ROB_SIZE - 1 : 0];
     reg [`DATA_RANGE] new_pc [`ROB_SIZE - 1 : 0];
@@ -81,12 +87,14 @@ module ROB(
     assign Vj_valid_to_disp = ready[Qj_from_disp];
     assign Vj_to_disp = result[Qj_from_disp];
 
-    wire debug_is_ls = is_load_store[head]; // 所以为什么 >= <= 号会出问题？？？？
+    wire debug_is_ls = is_load_store[head]; // 所以为什么 >= <= 号会出问题？？？？A: 不是这个的问题
     assign commit_command_to_lsb = ((~is_empty) && debug_is_ls);
     assign alias_to_store = head;
 
     integer i;
+    reg [31:0] clk_cnt = 0;
     always @(posedge clk) begin
+        clk_cnt = clk_cnt + 1;
         if (rst || rollback) begin
             head <= 1;
             tail <= 1;
@@ -112,9 +120,9 @@ module ROB(
         else if (~rdy) begin end
         else begin
             if (valid_from_disp && !rob_full) begin
-                $display("tail = %h, tmp_pc = %h", tail, pc_from_disp);
-                $display("inst_type = %d", inst_type_from_disp);
-                $display("is_load_store = %d", is_load_store_from_disp);
+                // $fdisplay(outfile, "tail = %h, tmp_pc = %h", tail, pc_from_disp);
+                // $fdisplay(outfile, "inst_type = %d", inst_type_from_disp);
+                // $fdisplay(outfile, "is_load_store = %d", is_load_store_from_disp);
                 tail <= next_tail;
                 ready[tail] <= 1'b0;
                 is_btype[tail] <= is_btype_from_disp;
@@ -127,7 +135,7 @@ module ROB(
             end
 
             if (valid_from_alu) begin
-                $display("%h", alias_from_alu);
+                // $fdisplay(outfile, "CDB valid from alu: alias = %h", alias_from_alu);
                 ready[alias_from_alu] <= 1'b1;
                 result[alias_from_alu] <= result_from_alu;
                 really_jump[alias_from_alu] <= really_jump_from_alu;
@@ -141,36 +149,47 @@ module ROB(
             end
 
             if (~is_empty && ready[head]) begin
-                $display("caonima");
+                `ifdef DEBUG
+                $fdisplay(outfile, "commit: pc = %h", original_pc[head]);
+                `endif
+                // if (original_pc[head] == 32'h0000114c) begin
+                //     $fdisplay(outfile, "really_jump: %h", really_jump[head]);
+                // end
                 head <= next_head;
                 ready[head] <= 1'b0;
-                if (is_btype[head]) begin
+                if (is_btype[head] || inst_type[head] == `JAL || inst_type[head] == `JALR) begin
                     // 甩给 predictor
-                    $display("aminoac");
+                    // $fdisplay(outfile, "Jump processing: pc = %h, inst_type = %h", original_pc[head], inst_type[head]);
                     valid_to_predictor <= 1'b1;
                     really_jump_to_predictor <= really_jump[head];
                     branch_pc_to_predictor <= original_pc[head];
                     if (really_jump[head] != predicted_jump[head]) begin
                         // Rollback
                         // correctness_to_predictor <= 1'b0;
+                        // 会考虑 JALR 的。
                         rollback <= 1'b1;
                         rollback_pc <= really_jump[head] ? new_pc[head] : original_pc[head] + 4;
+                        // $display("really_jump[head], new_pc[head], original_pc[head]: %h, %h, %h", really_jump[head], new_pc[head], original_pc[head]);
                     end
-                    // else begin
-                    //     correctness_to_predictor <= 1'b1;
-                    // end
+                    else begin
+                        // correctness_to_predictor <= 1'b1;
+                        rollback <= 1'b0;
+                    end
                 end
                 else begin
                     valid_to_predictor <= 1'b0;
                 end
 
                 if (rd[head] != 0) begin
-                        // 去找 RF
-                        valid_to_reg_file <= 1'b1;
-                        reg_id_to_reg_file <= rd[head];
-                        result_to_reg_file <= result[head];
-                        alias_to_reg_file <= head;
-                    end
+                    // 去找 RF
+                    `ifdef DEBUG
+                    $fdisplay(outfile, "commit to rf: reg_id = %h, result = %h", rd[head], result[head]);
+                    `endif
+                    valid_to_reg_file <= 1'b1;
+                    reg_id_to_reg_file <= rd[head];
+                    result_to_reg_file <= result[head];
+                    alias_to_reg_file <= head;
+                end
                 else begin
                     valid_to_reg_file <= 1'b0;
                 end

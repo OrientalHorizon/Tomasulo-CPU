@@ -14,7 +14,12 @@ module ALU(
     output reg  [`DATA_RANGE] pc_output,
     output reg  really_jump
 );
-
+    `ifdef DEBUG
+    integer outfile;
+    initial begin
+        outfile = $fopen("test-alu.out");
+    end
+    `endif
     always @(*) begin
         target_rob_index_output = target_rob_index;
         really_jump = 1'b0;
@@ -38,7 +43,7 @@ module ALU(
 
             `JALR: begin
                 res = pc + 4;
-                pc_output = (rs1 + imm) & (~1);
+                pc_output = (rs1 + imm) & ~1;
                 really_jump = 1'b1; // ?
             end
 
@@ -52,6 +57,9 @@ module ALU(
 
             `BNE: begin
                 // res = pc + 4;
+                `ifdef DEBUG
+                $fdisplay(outfile, "pc = %h, rs1 = %h, rs2 = %h", pc, rs1, rs2);
+                `endif
                 if (rs1 != rs2) begin
                     pc_output = pc + imm;
                     really_jump = 1'b1;
@@ -95,11 +103,11 @@ module ALU(
             end
 
             `SLTI: begin
-                res = ($signed(rs1) < $signed(imm)) ? 1'b1 : 1'b0;
+                res = ($signed(rs1) < $signed(imm)) ? 1 : 0;
             end
 
             `SLTIU: begin
-                res = (rs1 < imm) ? 1'b1 : 1'b0;
+                res = (rs1 < imm) ? 1 : 0;
             end
 
             `XORI: begin
@@ -139,11 +147,11 @@ module ALU(
             end
 
             `SLT: begin
-                res = ($signed(rs1) < $signed(rs2)) ? 1'b1 : 1'b0;
+                res = ($signed(rs1) < $signed(rs2)) ? 1 : 0;
             end
 
             `SLTU: begin
-                res = (rs1 < rs2) ? 1'b1 : 1'b0;
+                res = (rs1 < rs2) ? 1 : 0;
             end
 
             `XOR: begin
@@ -167,7 +175,7 @@ module ALU(
             end
 
             default: begin
-                res = 1'b0;
+                res = 0;
             end
         endcase
     end

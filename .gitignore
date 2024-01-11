@@ -7,3 +7,6 @@ riscv/testspace/*
 
 References/
 toolchain/
+toolchain.tar.gz
+
+*.out

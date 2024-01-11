@@ -1,4 +1,4 @@
-// `include "utils.v"
+`include "utils.v"
 // `include "decoder.v"
 // `include "dispatcher.v"
 // `include "ifetch.v"
@@ -8,6 +8,7 @@
 // `include "rob.v"
 // `include "ALU.v"
 // `include "reservation_station.v"
+// `include "reg_file.v"
 // RISCV32I CPU top module
 // port modification allowed for debugging purposes
 
@@ -65,6 +66,8 @@ module cpu(
 
     wire global_rollback;
     wire [`DATA_RANGE] global_rollback_pc;
+
+    wire tmp_io_buffer_full = 0;
     
     // Mem ctrl
     mem_ctrl memory_controller(
@@ -84,7 +87,7 @@ module cpu(
         .valid_to_lsb(valid_mem_ctrl_to_lsb),
         .data_to_lsb(data_mem_ctrl_to_lsb),
 
-        .uart_full(io_buffer_full),
+        .uart_full(tmp_io_buffer_full),
         .data_from_ram(mem_din),
         .write_or_read(mem_wr),
         .addr_to_ram(mem_a),
@@ -187,9 +190,9 @@ module cpu(
 
     wire [`DATA_RANGE] data_disp_to_decoder;
     wire [`OPT_RANGE] inst_type_decoder_to_disp;
-    wire [`DATA_RANGE] rd_decoder_to_disp;
-    wire [`DATA_RANGE] rs1_decoder_to_disp;
-    wire [`DATA_RANGE] rs2_decoder_to_disp;
+    wire [4:0] rd_decoder_to_disp;
+    wire [4:0] rs1_decoder_to_disp;
+    wire [4:0] rs2_decoder_to_disp;
     wire [`DATA_RANGE] imm_decoder_to_disp;
     wire is_load_store_decoder_to_disp;
     wire is_btype_decoder_to_disp;
@@ -506,6 +509,31 @@ module cpu(
         .valid_to_rob(valid_lsb_to_cdb),
         .alias_to_rob(alias_lsb_to_cdb),
         .result_to_rob(result_lsb_to_cdb)
+    );
+
+    register_file registers(
+        .clk(clk_in),
+        .rst(rst_in),
+        .rdy(rdy_in),
+
+        .rollback(global_rollback),
+
+        .rs1_from_disp(rs1_disp_to_rf),
+        .rs2_from_disp(rs2_disp_to_rf),
+
+        .Vi_to_disp(Vi_rf_to_disp),
+        .Qi_to_disp(Qi_rf_to_disp),
+        .Vj_to_disp(Vj_rf_to_disp),
+        .Qj_to_disp(Qj_rf_to_disp),
+
+        .renaming_valid(renaming_valid_disp_to_rf),
+        .renaming_reg_id(renaming_reg_id_disp_to_rf),
+        .renaming_alias(renaming_alias_disp_to_rf),
+
+        .result_valid_from_rob(valid_rob_to_rf),
+        .reg_id_from_rob(reg_id_rob_to_rf),
+        .alias_from_rob(alias_rob_to_rf),
+        .result_from_rob(result_rob_to_rf)
     );
 
 endmodule

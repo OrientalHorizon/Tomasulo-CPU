@@ -24,6 +24,12 @@ module register_file(
     input  wire [`ROB_RANGE] alias_from_rob,
     input  wire [`DATA_RANGE] result_from_rob
 );
+    `ifdef DEBUG
+    integer outfile;
+    initial begin
+        outfile = $fopen("reg_file.out");
+    end
+    `endif
     reg [`DATA_RANGE] registers[31:0];
     reg [`ROB_RANGE] alias[31:0];
 
@@ -41,7 +47,8 @@ module register_file(
     assign Vi_to_disp = commit_rs1 ? result_from_rob : registers[rs1_from_disp];
     assign Vj_to_disp = commit_rs2 ? result_from_rob : registers[rs2_from_disp];
 
-    wire committing = (alias_from_rob == alias[reg_id_from_rob]);
+    wire tmp_rename_not_useful = ~renaming_valid || (renaming_valid && renaming_reg_id != reg_id_from_rob);
+    wire matched = (alias_from_rob == alias[reg_id_from_rob]) && tmp_rename_not_useful;
 
     integer i;
     always @(posedge clk) begin
@@ -63,11 +70,14 @@ module register_file(
                     alias[renaming_reg_id] <= renaming_alias;
                 end
 
-                if (result_valid_from_rob && reg_id_from_rob != 5'b0) begin
-                    if (committing) begin
+                if (result_valid_from_rob && reg_id_from_rob != 0) begin
+                    if (matched) begin
                         alias[reg_id_from_rob] <= 5'b0;
                     end
                     registers[reg_id_from_rob] <= result_from_rob;
+                    `ifdef DEBUG
+                    $fdisplay(outfile, "reg_id = %h, result = %h", reg_id_from_rob, result_from_rob);
+                    `endif
                 end
             end
         end

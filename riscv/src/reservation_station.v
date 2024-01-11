@@ -37,6 +37,7 @@ module reservation_station(
     input  wire [`ROB_RANGE] alias_from_lsb,
     input  wire [`DATA_RANGE] result_from_lsb
 );
+
     reg occupied [`RS_SIZE - 1 : 0];
     reg [`ROB_RANGE] id [`RS_SIZE - 1 : 0];
     reg [`ROB_RANGE] Qi [`RS_SIZE - 1 : 0];
@@ -45,29 +46,29 @@ module reservation_station(
     reg [`DATA_RANGE] Vj [`RS_SIZE - 1 : 0];
     reg [`DATA_RANGE] imm [`RS_SIZE - 1 : 0];
     reg [`DATA_RANGE] pc [`RS_SIZE - 1 : 0];
-    reg [6:0] inst_type [`RS_SIZE - 1 : 0];
+    reg [`OPT_RANGE] inst_type [`RS_SIZE - 1 : 0];
 
     assign rs_full = occupied[0] && occupied[1] && occupied[2] && occupied[3] && occupied[4] && occupied[5] && occupied[6] && occupied[7]
     && occupied[8] && occupied[9] && occupied[10] && occupied[11] && occupied[12] && occupied[13] && occupied[14] && occupied[15];
 
-    wire [`RS_RANGE] first_available = ~occupied[0] ? 0 : ~occupied[1] ? 1 : ~occupied[2] ? 2 : ~occupied[3] ? 3 : ~occupied[4] ? 4 : ~occupied[5] ? 5 : ~occupied[6] ? 6 : ~occupied[7] ? 7
-    : ~occupied[8] ? 8 : ~occupied[9] ? 9 : ~occupied[10] ? 10 : ~occupied[11] ? 11 : ~occupied[12] ? 12 : ~occupied[13] ? 13 : ~occupied[14] ? 14 : ~occupied[15] ? 15 : 16;
-    wire [`RS_RANGE] slot_ready_for_alu = (occupied[0] && ~Qi[0] && ~Qj[0]) ? 0 : (occupied[1] && ~Qi[1] && ~Qj[1]) ? 1 : (occupied[2] && ~Qi[2] && ~Qj[2]) ? 2 : (occupied[3] && ~Qi[3] && ~Qj[3]) ? 3
-    : (occupied[4] && ~Qi[4] && ~Qj[4]) ? 4 : (occupied[5] && ~Qi[5] && ~Qj[5]) ? 5 : (occupied[6] && ~Qi[6] && ~Qj[6]) ? 6 : (occupied[7] && ~Qi[7] && ~Qj[7]) ? 7
-    : (occupied[8] && ~Qi[8] && ~Qj[8]) ? 8 : (occupied[9] && ~Qi[9] && ~Qj[9]) ? 9 : (occupied[10] && ~Qi[10] && ~Qj[10]) ? 10 : (occupied[11] && ~Qi[11] && ~Qj[11]) ? 11
-    : (occupied[12] && ~Qi[12] && ~Qj[12]) ? 12 : (occupied[13] && ~Qi[13] && ~Qj[13]) ? 13 : (occupied[14] && ~Qi[14] && ~Qj[14]) ? 14 : (occupied[15] && ~Qi[15] && ~Qj[15]) ? 15 : 16;
+    wire [`RS_RANGE] first_available = !occupied[0] ? 0 : !occupied[1] ? 1 : !occupied[2] ? 2 : !occupied[3] ? 3 : !occupied[4] ? 4 : !occupied[5] ? 5 : !occupied[6] ? 6 : !occupied[7] ? 7
+    : !occupied[8] ? 8 : !occupied[9] ? 9 : !occupied[10] ? 10 : !occupied[11] ? 11 : !occupied[12] ? 12 : !occupied[13] ? 13 : !occupied[14] ? 14 : !occupied[15] ? 15 : 16;
+    wire [`RS_RANGE] slot_ready_for_alu = (occupied[0] && !Qi[0] && !Qj[0]) ? 0 : (occupied[1] && !Qi[1] && !Qj[1]) ? 1 : (occupied[2] && !Qi[2] && !Qj[2]) ? 2 : (occupied[3] && !Qi[3] && !Qj[3]) ? 3
+    : (occupied[4] && !Qi[4] && !Qj[4]) ? 4 : (occupied[5] && !Qi[5] && !Qj[5]) ? 5 : (occupied[6] && !Qi[6] && !Qj[6]) ? 6 : (occupied[7] && !Qi[7] && !Qj[7]) ? 7
+    : (occupied[8] && !Qi[8] && !Qj[8]) ? 8 : (occupied[9] && !Qi[9] && !Qj[9]) ? 9 : (occupied[10] && !Qi[10] && !Qj[10]) ? 10 : (occupied[11] && !Qi[11] && !Qj[11]) ? 11
+    : (occupied[12] && !Qi[12] && !Qj[12]) ? 12 : (occupied[13] && !Qi[13] && !Qj[13]) ? 13 : (occupied[14] && !Qi[14] && !Qj[14]) ? 14 : (occupied[15] && !Qi[15] && !Qj[15]) ? 15 : 16;
 
     // forwarding line，类似 LSB
-    wire new_Qi = (valid_from_lsb && (alias_from_lsb == Qi_from_disp)) ? 0 : 
+    wire [`ROB_RANGE] new_Qi = (valid_from_lsb && (alias_from_lsb == Qi_from_disp)) ? 0 : 
     (valid_from_alu && (alias_from_alu == Qi_from_disp)) ? 0 : Qi_from_disp;
 
-    wire new_Qj = (valid_from_lsb && (alias_from_lsb == Qj_from_disp)) ? 0 :
+    wire [`ROB_RANGE] new_Qj = (valid_from_lsb && (alias_from_lsb == Qj_from_disp)) ? 0 :
     (valid_from_alu && (alias_from_alu == Qj_from_disp)) ? 0 : Qj_from_disp;
 
-    wire new_Vi = (valid_from_lsb && (alias_from_lsb == Qi_from_disp)) ? result_from_lsb :
+    wire [`DATA_RANGE] new_Vi = (valid_from_lsb && (alias_from_lsb == Qi_from_disp)) ? result_from_lsb :
     (valid_from_alu && (alias_from_alu == Qi_from_disp)) ? result_from_alu : Vi_from_disp;
 
-    wire new_Vj = (valid_from_lsb && (alias_from_lsb == Qj_from_disp)) ? result_from_lsb :
+    wire [`DATA_RANGE] new_Vj = (valid_from_lsb && (alias_from_lsb == Qj_from_disp)) ? result_from_lsb :
     (valid_from_alu && (alias_from_alu == Qj_from_disp)) ? result_from_alu : Vj_from_disp;
     
     integer i;

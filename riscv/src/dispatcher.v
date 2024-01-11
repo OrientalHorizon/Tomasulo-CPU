@@ -12,9 +12,9 @@ module dispatcher(
     // 从 decoder 接收信息
     output wire [`DATA_RANGE] data_to_decoder,
     input  wire [`OPT_RANGE] inst_type_from_decoder,
-    input  wire [`DATA_RANGE] rd_from_decoder,
-    input  wire [`DATA_RANGE] rs1_from_decoder,
-    input  wire [`DATA_RANGE] rs2_from_decoder,
+    input  wire [4:0] rd_from_decoder,
+    input  wire [4:0] rs1_from_decoder,
+    input  wire [4:0] rs2_from_decoder,
     input  wire [`DATA_RANGE] imm_from_decoder,
     input  wire is_load_store_from_decoder,
     input  wire is_btype_from_decoder,
@@ -31,8 +31,8 @@ module dispatcher(
     output reg  is_load_store_to_rob,
     output reg  predicted_jump_to_rob,
     output reg  [`OPT_RANGE] inst_type_to_rob,
-    output reg  [`ROB_RANGE] Qi_to_rob,
-    output reg  [`ROB_RANGE] Qj_to_rob,
+    output wire [`ROB_RANGE] Qi_to_rob,
+    output wire [`ROB_RANGE] Qj_to_rob,
     input  wire Vi_valid_from_rob,
     input  wire [`DATA_RANGE] Vi_from_rob,
     input  wire Vj_valid_from_rob,
@@ -43,8 +43,8 @@ module dispatcher(
     output reg  [`REG_RANGE] renaming_reg_id_to_rf,
     output reg  [`ROB_RANGE] renaming_alias_to_rf,
 
-    output reg  [`REG_RANGE] rs1_to_rf,
-    output reg  [`REG_RANGE] rs2_to_rf,
+    output wire [`REG_RANGE] rs1_to_rf,
+    output wire [`REG_RANGE] rs2_to_rf,
 
     input  wire [`DATA_RANGE] Vi_from_rf,
     input  wire [`ROB_RANGE] Qi_from_rf,
@@ -79,6 +79,13 @@ module dispatcher(
     input  wire [`ROB_RANGE] alias_from_lsb,
     input  wire [`DATA_RANGE] result_from_lsb
 );
+    assign rs1_to_rf = rs1_from_decoder;
+    assign rs2_to_rf = rs2_from_decoder;
+
+    // 这两根线忘记连了。后果是 alu 在某个周期算出了依赖的结果，下一个周期这条指令被 issue，就会导致依赖一直消不掉。因为 ROB commit 还需要消耗一周期，所以 RS 没办法从 RF 里面拿到结果
+    assign Qi_to_rob = Qi_from_rf;
+    assign Qj_to_rob = Qj_from_rf;
+
     wire [`ROB_RANGE] rob_Qi = Vi_valid_from_rob ? 0 : Qi_from_rf;
     wire [`DATA_RANGE] rob_Vi = Vi_valid_from_rob ? Vi_from_rob : Vi_from_rf;
     wire [`ROB_RANGE] Qi = (valid_from_alu && alias_from_alu == Qi_from_rf) ? 0 : (valid_from_lsb && alias_from_lsb == Qi_from_rf) ? 0 : rob_Qi;
@@ -90,6 +97,8 @@ module dispatcher(
     wire [`DATA_RANGE] Vj = (valid_from_alu && alias_from_alu == Qj_from_rf) ? result_from_alu : (valid_from_lsb && alias_from_lsb == Qj_from_rf) ? result_from_lsb : rob_Vj;
 
     assign data_to_decoder = inst_from_ifetch;
+
+    // reg inva = 0;
     
     always @(posedge clk) begin
         if (rst || rollback) begin
@@ -98,15 +107,12 @@ module dispatcher(
             pc_to_rob <= 0;
             rd_to_rob <= 0;
             inst_type_to_rob <= 0;
-            Qi_to_rob <= 0;
-            Qj_to_rob <= 0;
+            // Qi_to_rob <= 0;
+            // Qj_to_rob <= 0;
 
             renaming_valid_to_rf <= 1'b0;
             renaming_reg_id_to_rf <= 0;
             renaming_alias_to_rf <= 0;
-
-            rs1_to_rf <= 0;
-            rs2_to_rf <= 0;
 
             valid_to_res_stn <= 1'b0;
             alias_to_res_stn <= 0;
@@ -134,6 +140,9 @@ module dispatcher(
             if (valid_from_ifetch && ~full) begin
                 // Preparing to dispatch
                 if (is_load_store_from_decoder) begin
+                    // if (predicted_pc_from_ifetch == 32'h0000109c) begin
+                    //     inva ^= 1'b1;
+                    // end
                     valid_to_lsb <= 1'b1;
                     alias_to_lsb <= cur_alias_from_rob;
                     inst_type_to_lsb <= inst_type_from_decoder;

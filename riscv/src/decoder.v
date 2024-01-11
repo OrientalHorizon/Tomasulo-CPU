@@ -4,9 +4,9 @@ module decoder(
     input  wire [`DATA_RANGE] inst_id,
 
     output reg  [`OPT_RANGE] opt,
-    output reg  [`DATA_RANGE] rd,
-    output reg  [`DATA_RANGE] rs1,
-    output reg  [`DATA_RANGE] rs2,
+    output reg  [4:0] rd,
+    output reg  [4:0] rs1,
+    output reg  [4:0] rs2,
     output reg  [`DATA_RANGE] imm,
     output reg  is_load_store,
     output reg  is_btype
@@ -122,25 +122,26 @@ module decoder(
             end
 
             7'b0010011: begin // ADDI, SLTI, SLTIU, XORI, ORI, ANDI, SLLI, SRLI, SRAI
+                // Decoder 还能写错？？？？？？？？？？？！！！！
+                // shabi Copilot
                 is_load_store = 1'b0;
                 is_btype = 1'b0;
                 case (inst_id[14:12])
-                    3'b000: begin
-                        opt = `ADDI;
-                    end
+                    3'b000: opt = `ADDI;
                     3'b010: opt = `SLTI;
                     3'b011: opt = `SLTIU;
                     3'b100: opt = `XORI;
-                    3'b110: begin
-                        if (inst_id[31:25] == 7'b0000000) begin
+                    3'b110: opt = `ORI;
+                    3'b111: opt = `ANDI;
+                    3'b001: opt = `SLLI;
+                    3'b101: begin
+                        if (inst_id[31:26] == 6'b000000) begin
                             opt = `SRLI;
-                        end else begin
+                        end
+                        else begin
                             opt = `SRAI;
                         end
                     end
-                    3'b001: opt = `SLLI;
-                    3'b101: opt = `SRLI;
-                    3'b111: opt = `SRAI;
                 endcase
                 rd = inst_id[11:7];
                 rs1 = inst_id[19:15];

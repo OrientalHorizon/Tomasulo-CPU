@@ -3,7 +3,7 @@
 `define IDLE 3'b000
 `define LOAD 3'b001
 `define STORE 3'b010
-`define ROLLBACK 2'b11
+`define ROLLBACK 3'b011
 
 `define WRITE 1'b0
 `define READ 1'b1
@@ -46,10 +46,16 @@ module LSB(
     output reg [`ROB_RANGE] alias_to_rob,
     output reg [`DATA_RANGE] result_to_rob
 );
+    `ifdef DEBUG
+    integer outfile;
+    initial begin
+        outfile = $fopen("lsb.out");
+    end
+    `endif
     // 要实现一个循环队列
     reg write_or_read; // write = 0, read = 1
 
-    reg [1:0] state;
+    reg [2:0] state;
 
     reg [`ROB_RANGE] id [`LSB_SIZE - 1 : 0];
     reg [`ROB_RANGE] Qi [`LSB_SIZE - 1 : 0];
@@ -67,22 +73,25 @@ module LSB(
     // 硬接线即可
 
     // forwarding line，如果当前周期就有结果，可能可以直接解决依赖
-    wire new_Qi = (valid_to_rob && (alias_to_rob == Qi_from_disp)) ? 0 : 
+    // 数据类型！！！！！！！！！！！！！！！！！11
+    wire [`ROB_RANGE] new_Qi = (valid_to_rob && (alias_to_rob == Qi_from_disp)) ? 0 : 
     (valid_from_alu && (alias_from_alu == Qi_from_disp)) ? 0 : Qi_from_disp;
 
-    wire new_Qj = (valid_to_rob && (alias_to_rob == Qj_from_disp)) ? 0 :
+    wire [`ROB_RANGE] new_Qj = (valid_to_rob && (alias_to_rob == Qj_from_disp)) ? 0 :
     (valid_from_alu && (alias_from_alu == Qj_from_disp)) ? 0 : Qj_from_disp;
 
-    wire new_Vi = (valid_to_rob && (alias_to_rob == Qi_from_disp)) ? result_to_rob :
+    wire [`DATA_RANGE] new_Vi = (valid_to_rob && (alias_to_rob == Qi_from_disp)) ? result_to_rob :
     (valid_from_alu && (alias_from_alu == Qi_from_disp)) ? result_from_alu : Vi_from_disp;
 
-    wire new_Vj = (valid_to_rob && (alias_to_rob == Qj_from_disp)) ? result_to_rob :
+    wire [`DATA_RANGE] new_Vj = (valid_to_rob && (alias_to_rob == Qj_from_disp)) ? result_to_rob :
     (valid_from_alu && (alias_from_alu == Qj_from_disp)) ? result_from_alu : Vj_from_disp;
 
     wire commit = commit_command_from_rob && (alias_to_store == id[head]);
     
     integer i;
+    reg [31:0] clk_cnt = 0;
     always @(posedge clk) begin
+        clk_cnt = clk_cnt + 1;
         if (rst || rollback_from_rob) begin
             state <= `IDLE;
             valid_to_memctrl <= 1'b0;
@@ -146,7 +155,7 @@ module LSB(
                     // 如果队列非空且可以提交，往 Memory controller 里面上东西
                     valid_to_rob <= 1'b0;
                     alias_to_rob <= 0;
-                    if (head != tail && commit && ~Qi[head] && ~Qj[head]) begin
+                    if (head != tail && commit && !Qi[head] && !Qj[head]) begin
                         // 可以 commit
                         alias_to_rob <= id[head];
                         inst_type_to_memctrl <= inst_type[head];
@@ -157,11 +166,17 @@ module LSB(
                             `LB, `LBU, `LH, `LHU, `LW: begin
                                 state <= `LOAD;
                                 write_or_read <= `READ;
+                                `ifdef DEBUG
+                                $fdisplay(outfile, "load: addr = %h", Vi[head] + imm[head]);
+                                `endif
                             end
                             `SB, `SH, `SW: begin
                                 state <= `STORE;
                                 write_or_read <= `WRITE;
                                 data_to_memctrl <= Vj[head];
+                                `ifdef DEBUG
+                                $fdisplay(outfile, "store: addr = %h, value = %h", Vi[head] + imm[head], Vj[head]);
+                                `endif
                             end
                         endcase
 

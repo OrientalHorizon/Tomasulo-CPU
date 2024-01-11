@@ -26,13 +26,14 @@ module ICache(
     reg status;
     // reg [15:0] counter;
 
-    reg [`REAL_ADDR_RANGE] storage [255:0];
+    // reg [`REAL_ADDR_RANGE] storage [255:0]; 咋想的？？？？？？？指令不是值吗
+    reg [`DATA_RANGE] storage [255:0];
     reg valid [255:0];
     reg [`TAG_RANGE] tag [255:0];
 
     wire hit = valid[pc_from_ifetch[`INDEX_RANGE]] && tag[pc_from_ifetch[`INDEX_RANGE]] == pc_from_ifetch[`TAG_RANGE];
-    assign valid_to_ifetch = hit || valid_from_memctrl && addr_to_memctrl == pc_from_ifetch;
-    assign data_to_ifetch = hit ? {15'b0, storage[pc_from_ifetch[`INDEX_RANGE]]} : data_from_memctrl; // TODO MARK
+    assign valid_to_ifetch = hit || (valid_from_memctrl && addr_to_memctrl == pc_from_ifetch);
+    assign data_to_ifetch = hit ? storage[pc_from_ifetch[`INDEX_RANGE]] : data_from_memctrl; // TODO MARK
 
     integer i;
     always @(posedge clk) begin
@@ -55,21 +56,16 @@ module ICache(
                     status <= `STALL;
                     valid_to_memctrl <= 1'b1;
                     addr_to_memctrl <= pc_from_ifetch;
-                    // $display("valid to memctrl");
                 end
             end
             else begin // `STALL
                 if (valid_from_memctrl) begin
-                    // $display("fuck memctrl");
                     valid_to_memctrl <= 1'b0;
                     status <= `AVAILABLE;
                     valid[addr_to_memctrl[`INDEX_RANGE]] <= 1'b1;
                     tag[addr_to_memctrl[`INDEX_RANGE]] <= addr_to_memctrl[`TAG_RANGE];
-                    storage[addr_to_memctrl[`INDEX_RANGE]] <= data_from_memctrl[17:0];
+                    storage[addr_to_memctrl[`INDEX_RANGE]] <= data_from_memctrl;
                 end
-                // else begin
-                //     $display("6");
-                // end
             end
         end
     end

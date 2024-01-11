@@ -4,8 +4,8 @@
 `define PREDICTOR_WIDTH 64
 `define PREDICTOR_RANGE 7:2
 
-`define WORKING 2'b00
-`define FETCHING 2'b01
+`define WAITING 2'b00
+`define READY 2'b01
 `define ROLLBACK 2'b10
 
 `define B_TYPE 7'b1100011
@@ -56,7 +56,6 @@ module predictor(
         else if (~rdy) begin end
         else begin
             if (commit_pc_valid) begin
-                // $display("eowfiugyfsiado");
                 if (really_jump) begin
                     if (prediction[commit_pc[`PREDICTOR_RANGE]] != 2'b11) begin
                         prediction[commit_pc[`PREDICTOR_RANGE]] <= prediction[commit_pc[`PREDICTOR_RANGE]] + 1;
@@ -100,6 +99,12 @@ module IFetch(
     input  wire rollback_from_rob,
     input  wire [`DATA_RANGE] rollback_pc_from_rob
 );
+    `ifdef DEBUG
+    integer outfile;
+    initial begin
+        outfile = $fopen("test.out");
+    end
+    `endif
     reg [1:0] status;
     reg [`DATA_RANGE] local_pc;
 
@@ -116,25 +121,40 @@ module IFetch(
             valid_to_dispatcher <= 0;
             valid_to_icache <= 0;
             inst_to_dispatcher <= 0;
-            status <= `FETCHING;
+            status <= `READY;
         end
         else if (~rdy) begin end
         else if (rollback_from_rob) begin
+            local_pc <= rollback_pc_from_rob;
             // TODO: rollback 的情况还要再考虑，什么时候能直接改 valid_to_icache
-            status <= `ROLLBACK;
+            status <= (status == `WAITING) ? `ROLLBACK : `READY;
             valid_to_dispatcher <= 0;
+            pc_to_dispatcher <= 0;
         end
         else begin
-            
-            // 跑状态机
-            if (status == `ROLLBACK) begin
+            if (status == `READY) begin
+                if (~blocked) begin
+                    valid_to_dispatcher <= 0;
 
+                    valid_to_icache <= 1;
+                    pc_to_icache <= local_pc;
+                    `ifdef DEBUG
+                    $fdisplay(outfile, "Asking to fetch: pc = %h", local_pc);
+                    `endif
+                    status <= `WAITING;
+                end
+                else begin
+                    valid_to_icache <= 0;
+                    pc_to_icache <= 0;
+                end
             end
-            if (status == `WORKING && ~blocked) begin
+
+            if (status == `WAITING && ~blocked) begin
                 if (valid_from_icache) begin
-                    // $display("WORKING & valid: pc = %h", local_pc);
-                    status <= `FETCHING;
+                    status <= `READY;
                     local_pc <= next_pc_from_manager;
+
+                    // 指令来了，送给 dispatcher
                     valid_to_dispatcher <= 1;
                     inst_to_dispatcher <= inst_from_icache;
                     pc_to_dispatcher <= local_pc; // 不能是 next_pc！！！
@@ -142,22 +162,14 @@ module IFetch(
 
                     valid_to_icache <= 0;
                 end
-                // else begin
-                //     $display("WORKING & not valid: pc = %d", local_pc);
-                // end
             end
 
-            if (status == `FETCHING) begin
-                if (~blocked) begin
-                    valid_to_dispatcher <= 0;
-
-                    valid_to_icache <= 1;
-                    pc_to_icache <= local_pc;
-                    // $display("FETCHING: pc = %h", local_pc);
-                    status <= `WORKING;
-                end
-                else begin
+            if (status == `ROLLBACK) begin
+                // 把指令丢掉
+                if (valid_from_icache) begin
                     valid_to_icache <= 0;
+                    pc_to_icache <= 0;
+                    status <= `READY;
                 end
             end
         end
@@ -191,7 +203,7 @@ module pc_manager(
     wire [`DATA_RANGE] pc_offset = is_btype ? imm_branch : imm_jal;
 
     assign pc_to_pred = is_btype ? pc_from_if : 0;
-    assign is_jump_by_manager = is_btype ? is_jump_from_pred : 1'b1;
+    assign is_jump_by_manager = is_btype ? is_jump_from_pred : 1'b1; // otherwise JAL
     assign is_jump_to_if = need_manager ? is_jump_by_manager : 1'b0;
     assign next_pc_to_if = is_jump_to_if ? pc_from_if + pc_offset : pc_from_if + 4;
 
@@ -199,10 +211,6 @@ module pc_manager(
         if (rst) begin
         end
         else if (~rdy) begin end
-        // if (is_btype) begin
-        //     $display("is_jump_by_manager = %h", is_jump_to_if);
-        //     $display("imm_branch = %h", imm_branch);
-        // end
     end
 
 endmodule

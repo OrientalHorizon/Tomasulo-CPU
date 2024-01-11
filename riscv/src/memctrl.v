@@ -37,7 +37,7 @@ module mem_ctrl (
     reg [15:0] counter;
     reg [2:0] tot_bytes;
     reg [31:0] clk_cnt = 0;
-    reg local_is_write;
+    wire local_is_write = valid_from_lsb && (inst_type_from_lsb == `SW || inst_type_from_lsb == `SH || inst_type_from_lsb == `SB);
     always @(posedge clk) begin
         clk_cnt = clk_cnt + 1;
         if (rst) begin
@@ -47,26 +47,34 @@ module mem_ctrl (
             data_to_icache <= 32'b0;
             data_to_lsb <= 32'b0;
             addr_to_ram <= 32'b0;
-            write_or_read <= `READ; // ?
-            local_is_write <= 1'b0;
+            write_or_read <= `READ; // 是 write 的话内存直接开始写了，这是很危险的
             status <= `IDLE;
         end
         else if (!rdy) begin end
         else if (uart_full) begin end
         else begin
-            if (valid_from_lsb && (inst_type_from_lsb == `SW || inst_type_from_lsb == `SH || inst_type_from_lsb == `SB)) begin
-                local_is_write <= 1'b1;
-            end
-            else if (valid_from_lsb) begin
-                local_is_write <= 1'b0;
-            end
+            // 同学你好，我是傻逼！！！！！！！！！！！！
+            // 阻塞赋值需要下一周期才能实现！！！
+            // if (valid_from_lsb && (inst_type_from_lsb == `SW || inst_type_from_lsb == `SH || inst_type_from_lsb == `SB)) begin
+            //     local_is_write <= `WRITE;
+            // end
+            // else begin
+            //     local_is_write <= `READ;
+            // end
 
             if (status == `IDLE) begin
                 // 优先级：写 > 读 > IFetch
+                valid_to_icache <= 1'b0;
+                valid_to_lsb <= 1'b0;
                 if (valid_from_lsb && local_is_write == `WRITE) begin
                     counter <= 0;
                     status <= `STORE_PROCESSING;
-                    addr_to_ram <= addr_from_lsb - 1;
+                    // for testing
+                    // addr_to_ram <= addr_from_lsb - 1;
+
+                    // addr_to_ram <= addr_from_lsb;
+
+                    // - 1 是因为下面循环的时候会统一 + 1
                     // 这里不能提前赋 write_or_read 为 1，否则它就直接开始写了
                     if (inst_type_from_lsb == `SW) begin
                         tot_bytes <= 4; // 之前怎么想的写成 3？？？
@@ -85,6 +93,7 @@ module mem_ctrl (
                     counter <= 0;
                     status <= `LOAD_PROCESSING;
                     addr_to_ram <= addr_from_lsb;
+                    data_to_lsb <= 0;
                     if (inst_type_from_lsb == `LW) begin
                         tot_bytes <= 4;
                     end
@@ -99,15 +108,14 @@ module mem_ctrl (
                     end
                 end
                 else if (valid_from_icache) begin
-                    // $display("current clock = %d", clk_cnt);
-                    // $display("IDLE && valid from icache");
                     counter <= 0;
                     status <= `FETCH_PROCESSING;
                     addr_to_ram <= addr_from_icache;
                     tot_bytes <= 4;
                 end
             end
-            if (status == `STORE_PROCESSING && !uart_full) begin
+            // if (status == `STORE_PROCESSING && ((!uart_full) || (addr_from_lsb != 32'h30000 && addr_from_lsb != 32'h30004))) begin // TODO: 只有往 30000 多写的时候 io_buffer_full 才会有影响
+            if (status == `STORE_PROCESSING) begin // Simulation only
                 case (counter)
                     16'b0: data_to_ram <= data_from_lsb[7:0];
                     16'b1: data_to_ram <= data_from_lsb[15:8];
@@ -115,28 +123,32 @@ module mem_ctrl (
                     16'b11: data_to_ram <= data_from_lsb[31:24];
                 endcase
 
-                write_or_read <= `WRITE;
+                // write_or_read <= `WRITE;
 
-                if (counter == tot_bytes) begin 
+                if (counter == tot_bytes) begin
                     // 如果 -1 的话 data_to_ram 和 addr_to_ram 会被同时赋值，到时候会存到地址 0
                     // 准备停机一周期
                     status <= `STALL;
                     valid_to_lsb <= 1'b1;
                     addr_to_ram <= 0;
-                    // write_or_read <= `READ; 还没到时候
+                    write_or_read <= `READ;
                 end
                 else begin
+                    write_or_read <= `WRITE;
                     counter <= counter + 1;
-                    addr_to_ram <= addr_to_ram + 1;
+                    addr_to_ram <= (counter == 0) ? addr_from_lsb : addr_to_ram + 1;
                 end
             end
             if (status == `LOAD_PROCESSING) begin
-                case (counter)
-                    16'h1: data_to_lsb[7:0] <= data_from_ram;
-                    16'h2: data_to_lsb[15:8] <= data_from_ram;
-                    16'h3: data_to_lsb[23:16] <= data_from_ram;
-                    16'h4: data_to_lsb[31:24] <= data_from_ram;
-                endcase
+                // fix: 假设只读一个字节，counter = 16'h2 的时候 RAM 也可能传值进来，导致多赋值
+                if (counter <= tot_bytes) begin
+                    case (counter)
+                        16'h1: data_to_lsb[7:0] <= data_from_ram;
+                        16'h2: data_to_lsb[15:8] <= data_from_ram;
+                        16'h3: data_to_lsb[23:16] <= data_from_ram;
+                        16'h4: data_to_lsb[31:24] <= data_from_ram;
+                    endcase
+                end
 
                 if (counter == tot_bytes + 1) begin
                     addr_to_ram <= 0;
@@ -158,8 +170,6 @@ module mem_ctrl (
                 end
             end
             if (status == `FETCH_PROCESSING) begin
-                // $display("current clock = %d", clk_cnt);
-                // $display("fetching: counter = %d", counter);
                 case (counter)
                     16'h1: data_to_icache[7:0] <= data_from_ram;
                     16'h2: data_to_icache[15:8] <= data_from_ram;
@@ -177,7 +187,7 @@ module mem_ctrl (
                     addr_to_ram <= addr_to_ram + 1;
                 end
             end
-            else if (status == `STALL) begin // 写成 <= 了，无语
+            if (status == `STALL) begin // 写成 <= 了，无语
                 status <= `IDLE;
                 write_or_read <= `READ;
                 valid_to_icache <= 0;

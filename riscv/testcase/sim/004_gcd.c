@@ -6,6 +6,9 @@ int gcd(int x, int y) {
 
 int main() {
     outlln(gcd(10,1));
+    // outlln(38);
+    // outlln(gcd(12, 3));
+    // outlln(gcd(4, 6));
     outlln(gcd(34986,3087));
     outlln(gcd(2907,1539));
 
