@@ -24,6 +24,7 @@ module ALU(
         target_rob_index_output = target_rob_index;
         really_jump = 1'b0;
         pc_output = 1'b0;
+        res = 0;
         result_valid = (opt != 0) ? 1'b1 : 1'b0; // 绷，一直 not valid 是吧
     
         case (opt)

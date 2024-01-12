@@ -12,6 +12,13 @@ module decoder(
     output reg  is_btype
 );
     always @(*) begin
+        rd = 0;
+        rs1 = 0;
+        rs2 = 0; // ???
+        imm = 0;
+        opt = 0;
+        is_btype = 0;
+        is_load_store = 0;
         case (inst_id[`OPT_RANGE])
             7'b0110111: begin // Only LUI
                 is_load_store = 1'b0;
