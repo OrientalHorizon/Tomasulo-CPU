@@ -67,7 +67,7 @@ module cpu(
     wire global_rollback;
     wire [`DATA_RANGE] global_rollback_pc;
 
-    wire tmp_io_buffer_full = 0;
+    // wire tmp_io_buffer_full = 0;
     
     // Mem ctrl
     mem_ctrl memory_controller(
@@ -87,7 +87,7 @@ module cpu(
         .valid_to_lsb(valid_mem_ctrl_to_lsb),
         .data_to_lsb(data_mem_ctrl_to_lsb),
 
-        .uart_full(tmp_io_buffer_full),
+        .uart_full(io_buffer_full),
         .data_from_ram(mem_din),
         .write_or_read(mem_wr),
         .addr_to_ram(mem_a),
@@ -388,6 +388,10 @@ module cpu(
 
         .really_jump_from_alu(really_jump_alu_to_rob),
         .real_pc_from_alu(real_pc_alu_to_rob),
+
+        .valid_to_predictor(valid_rob_to_pred),
+        .really_jump_to_predictor(really_jump_rob_to_pred),
+        .branch_pc_to_predictor(pc_rob_to_pred),
 
         .valid_from_disp(valid_disp_to_rob),
         .pc_from_disp(pc_disp_to_rob),

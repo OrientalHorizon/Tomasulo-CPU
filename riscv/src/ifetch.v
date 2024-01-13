@@ -9,7 +9,7 @@
 `define ROLLBACK 2'b10
 
 `define B_TYPE 7'b1100011
-`define JAL 7'b1101111
+`define JAL_OPCODE 7'b1101111
 
 // module pc_register(
 //     input  wire clk,
@@ -193,7 +193,7 @@ module pc_manager(
 );
     // 硬接线
     wire is_btype = (inst_from_if[`OPT_RANGE] == `B_TYPE) ? 1'b1 : 1'b0;
-    wire is_jal = (inst_from_if[`OPT_RANGE] == `JAL) ? 1'b1 : 1'b0; // 赋初值！！！！
+    wire is_jal = (inst_from_if[`OPT_RANGE] == `JAL_OPCODE) ? 1'b1 : 1'b0; // 赋初值！！！！
     wire need_manager = is_btype || is_jal;
     wire [`DATA_RANGE] imm_jal;
     wire [`DATA_RANGE] imm_branch;

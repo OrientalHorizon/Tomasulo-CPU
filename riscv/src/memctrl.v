@@ -114,8 +114,8 @@ module mem_ctrl (
                     tot_bytes <= 4;
                 end
             end
-            // if (status == `STORE_PROCESSING && ((!uart_full) || (addr_from_lsb != 32'h30000 && addr_from_lsb != 32'h30004))) begin // TODO: 只有往 30000 多写的时候 io_buffer_full 才会有影响
-            if (status == `STORE_PROCESSING) begin // Simulation only
+            if (status == `STORE_PROCESSING && ((!uart_full) || (addr_from_lsb != 32'h30000 && addr_from_lsb != 32'h30004))) begin // TODO: 只有往 30000 多写的时候 io_buffer_full 才会有影响
+            // if (status == `STORE_PROCESSING) begin // Simulation only
                 case (counter)
                     16'b0: data_to_ram <= data_from_lsb[7:0];
                     16'b1: data_to_ram <= data_from_lsb[15:8];
